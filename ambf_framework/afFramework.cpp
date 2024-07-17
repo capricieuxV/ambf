@@ -8071,41 +8071,41 @@ void afGhostObject::update(double dt)
 
     delete manifoldArray;
 
-    for (int i = 0 ; i < m_sensedBodies.size() ; i++){
-        m_sensedBodies[i]->setGravity(m_afWorld->m_bulletWorld->getGravity());
-        m_sensedBodies[i]->applyCentralForce(btVector3(0, 0, 0));
-        m_sensedBodies[i]->applyTorque(btVector3(0, 0, 0));
-    }
+//    for (int i = 0 ; i < m_sensedBodies.size() ; i++){
+//        m_sensedBodies[i]->setGravity(m_afWorld->m_bulletWorld->getGravity());
+//        m_sensedBodies[i]->applyCentralForce(btVector3(0, 0, 0));
+//        m_sensedBodies[i]->applyTorque(btVector3(0, 0, 0));
+//    }
 
     m_sensedBodies.clear();
     m_sensedBodies = localSensedBodies;
 
 
-    for (int i = 0 ; i < m_sensedBodies.size() ; i++){
-        if (m_sensedBodies[i]){
-            m_sensedBodies[i]->setGravity(btVector3(0, 0, 0));
-            double damping_factor = 1.0 - 0.1;
-            btVector3 va(0, 0, 0);
-            if (getParentObject()){
-                afRigidBodyPtr parentBody = dynamic_cast<afRigidBodyPtr>(getParentObject());
-                va = parentBody->m_bulletRigidBody->getLinearVelocity();
-            }
+//    for (int i = 0 ; i < m_sensedBodies.size() ; i++){
+//        if (m_sensedBodies[i]){
+//            m_sensedBodies[i]->setGravity(btVector3(0, 0, 0));
+//            double damping_factor = 1.0 - 0.1;
+//            btVector3 va(0, 0, 0);
+//            if (getParentObject()){
+//                afRigidBodyPtr parentBody = dynamic_cast<afRigidBodyPtr>(getParentObject());
+//                va = parentBody->m_bulletRigidBody->getLinearVelocity();
+//            }
 
-            btVector3 vb = m_sensedBodies[i]->getLinearVelocity();
-            double mag_va = va.length();
-            btVector3 proj_vb_va(0, 0, 0);
+//            btVector3 vb = m_sensedBodies[i]->getLinearVelocity();
+//            double mag_va = va.length();
+//            btVector3 proj_vb_va(0, 0, 0);
 
-            if (mag_va > 0.00001){
-                proj_vb_va = va.normalized() * (vb.dot(va) / mag_va);
-            }
-            btVector3 orth_vb_va = vb - proj_vb_va;
+//            if (mag_va > 0.00001){
+//                proj_vb_va = va.normalized() * (vb.dot(va) / mag_va);
+//            }
+//            btVector3 orth_vb_va = vb - proj_vb_va;
 
-            btVector3 wb =  m_sensedBodies[i]->getAngularVelocity();
+//            btVector3 wb =  m_sensedBodies[i]->getAngularVelocity();
 
-            m_sensedBodies[i]->setLinearVelocity(damping_factor * orth_vb_va + va);
-            m_sensedBodies[i]->setAngularVelocity(damping_factor * wb);
-        }
-    }
+//            m_sensedBodies[i]->setLinearVelocity(damping_factor * orth_vb_va + va);
+//            m_sensedBodies[i]->setAngularVelocity(damping_factor * wb);
+//        }
+//    }
 }
 
 bool afGhostObject::createFromAttribs(afGhostObjectAttributes *a_attribs)
