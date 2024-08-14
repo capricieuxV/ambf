@@ -40,56 +40,28 @@
 */
 //==============================================================================
 
-#ifndef AFSENSORCOMM_H
-#define AFSENSORCOMM_H
+#ifndef AFGHOSTCOMM_H
+#define AFGHOSTCOMM_H
 
 #include <string>
-#include "ambf_server/SensorRosCom.h"
+#include "ambf_server/GhostObjectRosCom.h"
 
 namespace ambf_comm{
 
-class Sensor: public SensorRosCom{
+class GhostObject: public GhostObjectRosCom{
 public:
-    Sensor(std::string a_name, std::string a_namespace, int a_freq_min, int a_freq_max, double time_out);
+    GhostObject(std::string a_name, std::string a_namespace, int a_freq_min, int a_freq_max, double time_out);
     void cur_position(double px, double py, double pz);
     void cur_orientation(double roll, double pitch, double yaw);
     void cur_orientation(double qx, double qy, double qz, double qw);
     inline void set_parent_name(std::string parent_name){m_State.parent_name.data = parent_name;}
-    inline void set_count(int count){m_State.count = count;}
 
-    void set_trigger(bool triggered);
-    void set_triggers(std::vector<bool> triggered);
-
-    void set_range(double range);
-    void set_ranges(std::vector<double> ranges);
-
-    void set_measurement(double measurements);
-    void set_measurements(std::vector<double> measurements);
-
-    void set_sensed_object(std::string sensed_object);
-    void set_sensed_objects(std::vector<std::string> sensed_objects);
-
-    void set_type(std::string type);
-
-    // We may have multiple individual sensor elements belonging to this
-    // sensor comm. And groups of sensors may be in contact with different
-    // sets of objects. This method is thus used to specify the mapping
-    // of each sensor element w.r.t. to the sensed_objects list of string.
-    void set_sensed_objects_map(std::vector<int> sensed_objects_map);
-
-    void set_sensed_object_map(int sensed_objects_map);
+    void reset_sensed_objects();
+    void add_sensed_object(std::string sensed_object);
+    void set_sensed_objects(std::vector<std::string>& sensed_objects);
 
 };
 
-class ContactSensor: public ContactSensorRosCom{
-public:
-    ContactSensor(std::string a_name, std::string a_namespace, int a_freq_min, int a_freq_max, double time_out);
-    inline void set_parent_name(std::string parent_name){m_State.parent_name.data = parent_name;}
-
-    void set_type(std::string type);
-    void add_contact_event(ambf_msgs::ContactEvent& a_contact_event);
-    void reset_contact_events();
-};
 }
 
 #endif
