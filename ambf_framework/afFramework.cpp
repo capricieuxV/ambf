@@ -499,8 +499,9 @@ bool afVisualUtils::createFromAttribs(afVisualAttributes *attribs, cMultiMesh *m
         // Important to set the transparency after setting the material, otherwise the alpha
         // channel ruins the Z-buffer depth testing in some way.
         mesh->setTransparencyLevel(attribs->m_colorAttribs.m_alpha);
-        mesh->setShowEnabled(attribs->m_visible);
     }
+
+    mesh->setShowEnabled(attribs->m_visible);
     return true;
 }
 
