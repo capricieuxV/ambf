@@ -461,7 +461,7 @@ cMaterial afMaterialUtils::createFromAttribs(afColorAttributes *a_color)
 bool afVisualUtils::createFromAttribs(afVisualAttributes *attribs, cMultiMesh *mesh, string obj_name){
     if (attribs->m_geometryType == afGeometryType::MESH){
         if (mesh->loadFromFile(attribs->m_meshFilepath.c_str()) ){
-            if (attribs->m_meshRemoveDuplicates == afStatusFlag::TRUE){
+            if (attribs->m_meshRemoveDuplicates == afStatusFlag::TRUE_){
                 mesh->removeDuplicateVertices();
             }
 //            else if (attribs->m_meshRemoveDuplicates == afStatusFlag::UNDEFINED){

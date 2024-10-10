@@ -72,7 +72,7 @@
 #define HAVE_DLFCN_H
 #define HAVE_MALLOC_H
 #if !defined (__arm__)
-    #define HAVE_CPUID_H
+    //#define HAVE_CPUID_H
 #endif
 #define HAVE_FLOAT_H
 #define HAVE_FENV_H

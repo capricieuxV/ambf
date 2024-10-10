@@ -55,8 +55,8 @@ namespace ambf {
 
 enum class afStatusFlag{
     UNDEFINED,
-    TRUE,
-    FALSE,
+    TRUE_,
+    FALSE_,
 };
 
 ///

@@ -262,9 +262,9 @@ bool ADFUtils::getVisualAttribsFromNode(YAML::Node *a_node, afVisualAttributes *
 
             if (meshRemoveDuplicatesNode.IsDefined()){
                 if (meshRemoveDuplicatesNode.as<bool>() == true){
-                    attribs->m_meshRemoveDuplicates = afStatusFlag::TRUE;}
+                    attribs->m_meshRemoveDuplicates = afStatusFlag::TRUE_;}
                 else{
-                    attribs->m_meshRemoveDuplicates = afStatusFlag::FALSE;}
+                    attribs->m_meshRemoveDuplicates = afStatusFlag::FALSE_;}
             }
         }
         else{
