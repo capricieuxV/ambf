@@ -21,7 +21,6 @@ gravity: {x: 0.0, y: 0.0, z: -9.81}
 #     path: ./skybox/
 #     vertex: "shader.vs"
 #     fragment: "shader.fs"
-
 light1:
   namespace: /ambf/env/lights/
   name: light1
