@@ -39,5 +39,6 @@
 
 
 # common settings required to build examples
+link_directories(/opt/homebrew/lib)
 add_executable (loader_test test_loading.cpp)
-target_link_libraries (loader_test ${ADF_LOADER_LIBRARIES})
+target_link_libraries (loader_test ${ADF_LOADER_LIBRARIES} libyaml-cpp.dylib)

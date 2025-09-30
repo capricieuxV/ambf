@@ -44,7 +44,7 @@
 # COURTESY:
 # Starting point from CMakeLists of CHAI3D by SEB
 
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.50)
 project (AMBF)
 
 # Set C++ Standard
@@ -235,9 +235,9 @@ include_directories (${GLFW_INCLUDE_DIRS})
 # find_package(libjpeg REQUIRED)
 
 list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/Cellar/)
-list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/Cellar/openal-soft/1.23.1/include/)
+list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/Cellar/openal-soft/1.24.3/include/)
 include_directories(/opt/homebrew/Cellar/)
-include_directories(/opt/homebrew/Cellar/openal-soft/1.23.1/include/)
+include_directories(/opt/homebrew/Cellar/openal-soft/1.24.3/include/)
 
 # header search path
 include_directories (${PROJECT_SOURCE_DIR}/ambf_math)
@@ -250,11 +250,11 @@ include_directories (${PROJECT_SOURCE_DIR}/external/Eigen)
 include_directories (${PROJECT_SOURCE_DIR}/external/glew/include)
 include_directories (${PROJECT_SOURCE_DIR}/external/giflib/include)
 include_directories (${PROJECT_SOURCE_DIR}/external/lib3ds/include)
-# include_directories (${PROJECT_SOURCE_DIR}/external/libjpeg/include)
-# include_directories (${PROJECT_SOURCE_DIR}/external/libpng/include)
-# include_directories (${PROJECT_SOURCE_DIR}/external/openal/include)
-# include_directories (${PROJECT_SOURCE_DIR}/external/openal/OpenAL32/Include)
-# include_directories (${PROJECT_SOURCE_DIR}/external/openal/Alc)
+include_directories (${PROJECT_SOURCE_DIR}/external/libjpeg/include)
+include_directories (${PROJECT_SOURCE_DIR}/external/libpng/include)
+include_directories (${PROJECT_SOURCE_DIR}/external/openal/include)
+include_directories (${PROJECT_SOURCE_DIR}/external/openal/OpenAL32/Include)
+include_directories (${PROJECT_SOURCE_DIR}/external/openal/Alc)
 include_directories (${PROJECT_SOURCE_DIR}/external/pugixml/include)
 include_directories (${PROJECT_SOURCE_DIR}/external/theoraplayer/include/theoraplayer)
 include_directories (${PROJECT_SOURCE_DIR}/external/theoraplayer/external/ogg/include)
@@ -331,7 +331,7 @@ if(NOT yaml-cpp_FOUND)
   add_dependencies(adf_loader YAML_CPP_EXTERNAL_PROJECT)
 endif()
 
-target_link_libraries(adf_loader ${YAML_CPP_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(adf_loader libyaml-cpp.dylib ${Boost_LIBRARIES})
 
 set (ADF_LOADER_LIBRARIES adf_loader)
 
@@ -354,7 +354,7 @@ add_definitions(${COMMON_DEFINITIONS})
 # set (PREFIX_LIB_PATH /opt/homebrew/Cellar)
 
 link_directories(/opt/homebrew/lib)
-target_link_libraries(chai3d libpng.dylib libjpeg.dylib /opt/homebrew/Cellar/openal-soft/1.23.1/lib/libopenal.dylib)
+target_link_libraries(chai3d ${PNG_LIBRARY} ${JPEG_LIBRARY} /opt/homebrew/Cellar/openal-soft/1.24.3/lib/libopenal.dylib)
 target_link_libraries(ambf_framework ${chai3d} ${bullet} ${Boost_LIBRARIES})
 
 # To ensure the ambf_ros_modules are build before the ambf_framework,
