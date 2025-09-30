@@ -68,7 +68,7 @@ Source the ROS installation by following the instructions in Section `1.5 Enviro
 Now we can proceed to build **AMBF**:
 ```bash
 cd ~
-git clone https://github.com/WPI-AIM/ambf.git
+git clone https://github.com/capricieuxV/ambf.git
 cd ambf && mkdir build
 cd build
 cmake ..
