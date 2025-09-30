@@ -19,3 +19,6 @@ bin-debug/
 *.blend1
 *.old
 .DS_Store
+
+*.sh
+/local_libs
