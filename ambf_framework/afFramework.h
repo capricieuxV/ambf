@@ -404,6 +404,13 @@ public:
     // Store the last effort command to compute and bound max impulse
     double m_last_cmd = 0;
 
+    // Get Controller Gains
+    inline double getP_lin(){return m_P;}
+    inline double getI_lin(){return m_I;}
+    inline double getD_lin(){return m_D;}
+
+    void setLinearGains(double a_P, double a_I, double a_D);
+
     double computeOutput(double process_val, double set_point, double current_time);
 
     void boundImpulse(double& effort_cmd);
@@ -1164,12 +1171,15 @@ private:
 struct afContactData{
 public:
 
-    afContactData(cVector3d& gpA, cVector3d& gpB, cVector3d& gnB, double& distance);
+    afContactData(cVector3d& gpA, cVector3d& gpB, cVector3d& gnB, cVector3d& lpA, cVector3d& lpB, double& distance);
 
     cVector3d m_P_a_w; // Point on A in world coords
 
     cVector3d m_P_b_w; // Point on B in world coords
-    cVector3d m_N_b_w;// Normal on A in world coords
+    cVector3d m_N_b_w; // Normal on B in world coords
+
+    cVector3d m_P_a_l; // Point on A in local coords
+    cVector3d m_P_b_l; // Point on B in local coords
 
     double m_distance; // Separating distance. Or penetration depth.
 };
@@ -1349,6 +1359,12 @@ public:
     void remove();
 
     bool isFeedBackEnabled(){return m_enableFeedback;}
+
+    // Set the gain of this joint
+    void setLinearGains(double a_P, double a_I, double a_D);
+
+    // Get the gain of this joint
+    vector<double> getLinearGains();
 
 protected:
 
@@ -1913,6 +1929,8 @@ public:
     bool createWindow();
 
     bool assignWindowCallbacks(afCameraWindowCallBacks* a_callbacks);
+
+    bool computeProjectionFromIntrinsics(const afCameraIntrinsics* a_attribs, double a_width, double a_height, double a_nearPlane, double a_farPlane);
 
     // Since we changed the order of ADF loading such that cameras are loaded before
     // bodies etc. we wouldn't be able to find a body defined as a parent in the
