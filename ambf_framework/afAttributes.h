@@ -55,8 +55,8 @@ namespace ambf {
 
 enum class afStatusFlag{
     UNDEFINED,
-    TRUE,
-    FALSE,
+    TRUE_,
+    FALSE_,
 };
 
 ///
@@ -847,6 +847,9 @@ public:
         m_useClusters = false;
         m_clusters = 0;
 
+        m_useCutting = false;
+        m_cutting = false;
+
         m_usePoseMatching = false;
 
         m_useConstraintRandomization = false;
@@ -891,6 +894,9 @@ public:
 
     bool m_useClusters;
     uint m_clusters;
+
+    bool m_useCutting;
+    bool m_cutting;
 
     bool m_usePoseMatching;
 

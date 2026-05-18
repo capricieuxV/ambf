@@ -262,9 +262,9 @@ bool ADFUtils::getVisualAttribsFromNode(YAML::Node *a_node, afVisualAttributes *
 
             if (meshRemoveDuplicatesNode.IsDefined()){
                 if (meshRemoveDuplicatesNode.as<bool>() == true){
-                    attribs->m_meshRemoveDuplicates = afStatusFlag::TRUE;}
+                    attribs->m_meshRemoveDuplicates = afStatusFlag::TRUE_;}
                 else{
-                    attribs->m_meshRemoveDuplicates = afStatusFlag::FALSE;}
+                    attribs->m_meshRemoveDuplicates = afStatusFlag::FALSE_;}
             }
         }
         else{
@@ -1717,6 +1717,12 @@ bool ADFLoader_1_0::loadSoftBodyAttribs(YAML::Node *a_node, afSoftBodyAttributes
                 attribs->m_fixedNodes.push_back(cfg_fixed_nodesNode[i].as<int>());
             }
         }
+        
+        if(cfg_cuttingNode.IsDefined()){
+            attribs->m_cutting = cfg_cuttingNode.as<bool>();
+            attribs->m_useCutting = true;
+        }
+
         if(cfg_clustersNode.IsDefined()){
             attribs->m_clusters = cfg_clustersNode.as<int>();
             attribs->m_useClusters = true;

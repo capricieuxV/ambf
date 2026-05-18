@@ -8,6 +8,8 @@ bin/lin-x86_64/*
 bin/mac-x86_64/ambf_simulator
 bin/mac-x86_64/loader_test
 bin/mac-x86_64/math_test
+bin/mac-x86_64/libs
+bin/mac-x86_64/run_with_libs.log
 bin-debug/
 *.autosave
 *.pyc

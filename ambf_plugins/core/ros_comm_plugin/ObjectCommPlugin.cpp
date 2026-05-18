@@ -24,6 +24,7 @@ void fillContactData(afContactEventMap* conEventMap, vector<ambf_msgs::ContactEv
         conEventMsgVec->push_back(conEventMsg);
     }
 }
+#endif
 
 #endif
 
