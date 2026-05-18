@@ -1,7 +1,8 @@
 #include "ObjectCommPlugin.h"
 
+#ifdef AF_ENABLE_AMBF_COMM_SUPPORT
 void copyVec(cVector3d* in, geometry_msgs::Vector3* out){
-    out->x = in->x(); out->y = in->x(); out->z = in->z();
+    out->x = in->x(); out->y = in->y(); out->z = in->z();
 }
 
 void fillContactData(afContactEventMap* conEventMap, vector<ambf_msgs::ContactEvent>* conEventMsgVec){
@@ -10,15 +11,21 @@ void fillContactData(afContactEventMap* conEventMap, vector<ambf_msgs::ContactEv
         ambf_msgs::ContactEvent conEventMsg;
         conEventMsg.object_name.data = it.first->getQualifiedIdentifier();
         ambf_msgs::ContactData contDataMsg;
+        ambf_msgs::ContactDataLocal contDataLocalMsg;
         for (int in = 0 ; in < it.second.m_contactData.size() ; in ++){
             contDataMsg.distance.data = it.second.m_contactData[in].m_distance;
             copyVec(&it.second.m_contactData[in].m_P_b_w, &contDataMsg.contact_point);
             copyVec(&it.second.m_contactData[in].m_N_b_w, &contDataMsg.contact_normal);
+            copyVec(&it.second.m_contactData[in].m_P_a_l, &contDataLocalMsg.local_point_a);
+            copyVec(&it.second.m_contactData[in].m_P_b_l, &contDataLocalMsg.local_point_b);
             conEventMsg.contact_data.push_back(contDataMsg);
+            conEventMsg.contact_data_local.push_back(contDataLocalMsg);
         }
         conEventMsgVec->push_back(conEventMsg);
     }
 }
+
+#endif
 
 void afRigidBodyState::setChildrenNames(afRigidBodyPtr afRBPtr){
     int num_children = afRBPtr->m_CJ_PairsActive.size();

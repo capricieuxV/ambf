@@ -42,6 +42,7 @@
 
 //------------------------------------------------------------------------------
 #include <chrono>
+#include <vector>
 #include "afFramework.h"
 #include "afConversions.h"
 #include "afShaders.h"
@@ -2872,6 +2873,9 @@ bool afSoftBody::createFromAttribs(afSoftBodyAttributes *a_attribs)
         return 0;
     }
 
+    m_shaderAttribs = a_attribs->m_shaderAttribs;
+    loadShaderProgram();
+
     if (m_collisionMesh->loadFromFile(a_attribs->m_collisionAttribs.m_meshFilepath.c_str())){
         m_collisionMesh->removeDuplicateVertices();
         m_collisionMesh->scale(m_scale);
@@ -2983,6 +2987,22 @@ bool afSoftBody::createFromAttribs(afSoftBodyAttributes *a_attribs)
 
     if (a_attribs->m_useConstraintRandomization){
         softBody->randomizeConstraints();
+    }
+
+     for (uint gI = 0 ; gI < a_attribs->m_collisionAttribs.m_groups.size() ; gI++){
+        uint group =  a_attribs->m_collisionAttribs.m_groups[gI];
+        // Sanity check for the group number
+        if (group >= 0 && group <= 999){
+            m_afWorld->m_collisionGroups[group].push_back(this);
+            m_collisionGroups.push_back(group);
+             // Print the soft body name and group
+            cout << "SoftBody Name: " << m_name << ", Group: " << group << endl;
+        }
+        else{
+            cerr << "WARNING! Body "
+                    << m_name
+                    << "'s group number is \"" << group << "\" which should be between [0 - 999], ignoring\n";
+        }
     }
 
     addChildSceneObject(m_visualMesh, cTransform());
@@ -3231,6 +3251,19 @@ bool afJointController::createFromAttribs(afJointControllerAttributes *a_attribs
 
     return true;
 }
+
+////
+/// \brief afCartesianController::setLinearGains
+/// \param a_P
+/// \param a_I
+/// \param a_D
+///
+void afJointController::setLinearGains(double a_P, double a_I, double a_D){
+    m_P = a_P;
+    m_I = a_I;
+    m_D = a_D;
+}
+
 
 double afJointController::computeOutput(double process_val, double set_point, double current_time){
     uint n = queue_length - 1;
@@ -3781,6 +3814,18 @@ double afJoint::getEffort(){
     return m_estimatedEffort;
 }
 
+
+void afJoint::setLinearGains(double a_P, double a_I, double a_D) {
+    this->m_controller.setLinearGains(a_P, a_I, a_D);
+}
+
+vector<double> afJoint::getLinearGains() {
+    vector<double> v;
+    v.push_back(this->m_controller.getP_lin());
+    v.push_back(this->m_controller.getI_lin());
+    v.push_back(this->m_controller.getD_lin());
+    return v;
+}
 
 ///
 /// \brief afSensor::afSensor
@@ -5993,13 +6038,31 @@ void afWorld::buildCollisionGroups(){
                     afInertialObjectPtr bodyA = grpA[aBodyIdx];
                     for(uint bBodyIdx = 0 ; bBodyIdx < grpB.size() ; bBodyIdx++){
                         afInertialObjectPtr bodyB = grpB[bBodyIdx];
-                        if (bodyA != bodyB && !bodyB->isCommonCollisionGroupIdx(bodyA->m_collisionGroups))
-                            bodyA->m_bulletRigidBody->setIgnoreCollisionCheck(bodyB->m_bulletRigidBody, true);
+                        if (bodyA != bodyB && !bodyB->isCommonCollisionGroupIdx(bodyA->m_collisionGroups)){
+                            if (bodyA->m_bulletRigidBody && bodyB->m_bulletRigidBody) {
+                                bodyA->m_bulletRigidBody->setIgnoreCollisionCheck(bodyB->m_bulletRigidBody, true);
+                                //cout << "Ignoring collision between rigid bodies: " << bodyA << " and " << bodyB << endl;
+                            }
+                            // Handle Soft Body
+                            else if (bodyA->m_bulletSoftBody && bodyB->m_bulletRigidBody) {
+                                bodyB->m_bulletRigidBody->setIgnoreCollisionCheck(bodyA->m_bulletSoftBody, true);
+                                //cout << "Ignoring collision between soft body: " << bodyA << " and rigid body: " << bodyB << endl;
+                            }
+                            else if (bodyA->m_bulletRigidBody && bodyB->m_bulletSoftBody) {
+                                bodyA->m_bulletRigidBody->setIgnoreCollisionCheck(bodyB->m_bulletSoftBody, true);
+                                //cout << "Ignoring collision between rigid body: " << bodyA << " and soft body: " << bodyB << endl;
+                            }
+                            else if (bodyA->m_bulletSoftBody && bodyB->m_bulletSoftBody) {
+                                // Set ignore collision for both soft bodies
+                                bodyA->m_bulletSoftBody->setIgnoreCollisionCheck(bodyB->m_bulletSoftBody, true);
+                                //cout << "Ignoring collision between soft bodies: " << bodyA << " and " << bodyB << endl;
+                        }
                     }
                 }
             }
         }
     }
+}
 }
 
 
@@ -6387,10 +6450,6 @@ bool afCamera::createFromAttribs(afCameraAttributes *a_attribs)
     setName(a_attribs->m_identificationAttribs.m_name);
     setNamespace(a_attribs->m_identificationAttribs.m_namespace);
 
-    m_camPos << a_attribs->m_kinematicAttribs.m_location.getPosition();
-    m_camLookAt << a_attribs->m_lookAt;
-    m_camUp << a_attribs->m_up;
-
     setOrthographic(a_attribs->m_orthographic);
 
     if (a_attribs->m_stereo){
@@ -6419,11 +6478,53 @@ bool afCamera::createFromAttribs(afCameraAttributes *a_attribs)
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
+    m_camPos << a_attribs->m_kinematicAttribs.m_location.getPosition();
+    m_camLookAt << a_attribs->m_lookAt;
+    m_camUp << a_attribs->m_up;
     // position and orient the camera
     setView(m_camPos, m_camLookAt, m_camUp);
+    m_camera->setClippingPlanes(a_attribs->m_nearPlane, a_attribs->m_farPlane);
+
+    if (a_attribs->m_intrinsics.m_defined){
+        const int rows = 4, cols = 4;
+        for (int r = 0 ; r < rows ; r++){
+            for (int c = 0 ; c < cols ; c++){
+                getInternalCamera()->m_projectionMatrix(r, c) = 0.0;
+            }
+        }
+        computeProjectionFromIntrinsics(&a_attribs->m_intrinsics,
+                                        a_attribs->m_windowResolution.m_width,
+                                        a_attribs->m_windowResolution.m_height,
+                                        a_attribs->m_nearPlane,
+                                        a_attribs->m_farPlane);
+
+        cerr << "INFO! USING CAMERA INTRINSICS FOR " << getQualifiedName() << endl;
+        cerr << "\t Focal Length(x, y): (" << a_attribs->m_intrinsics.m_fx << ", " << a_attribs->m_intrinsics.m_fy << ")" << endl;
+        cerr << "\t Principal Offset (x, y): (" << a_attribs->m_intrinsics.m_cx << ", " << a_attribs->m_intrinsics.m_cy << ")" << endl;
+        cerr << "\t Shear: " << a_attribs->m_intrinsics.m_s << endl;
+    }
+    else if (a_attribs->m_useCustomProjectionMatrix){
+        getInternalCamera()->m_useCustomProjectionMatrix = true;
+        const int rows = 4, cols = 4;
+        for (int r = 0 ; r < rows ; r++){
+            for (int c = 0 ; c < cols ; c++){
+                getInternalCamera()->m_projectionMatrix(r, c) = a_attribs->m_projectionMatrix[r][c];
+            }
+        }
+
+        cerr << "INFO! USING CUSTOM PROJECT MATRIX FOR CAMERA: " << getQualifiedName() << endl;
+        for (int r = 0 ; r < rows ; r++){
+            cerr << "\t[";
+            for (int c = 0 ; c < cols ; c++){
+                cerr << a_attribs->m_projectionMatrix[r][c] << " ";
+            }
+            cerr << "\t]" << endl;
+        }
+
+    }
+
     m_initialTransform = getLocalTransform();
     // set the near and far clipping planes of the camera
-    m_camera->setClippingPlanes(a_attribs->m_nearPlane, a_attribs->m_farPlane);
 
     // set stereo mode
     m_camera->setStereoMode(m_stereoMode);
@@ -6531,15 +6632,18 @@ bool afCamera::createWindow()
 
     m_monitor = m_monitors[m_monitorNumber];
 
-    // compute desired size of window
     const GLFWvidmode* mode = glfwGetVideoMode(m_monitor);
-    int w = 0.8 * mode->width;
-    int h = 0.5 * mode->height;
-    int x = 0.5 * (mode->width - w);
-    int y = 0.5 * (mode->height - h);
+    // compute desired size of window
+    afCameraAttributes* camAttribs = (afCameraAttributes*)getAttributes();
+    if (camAttribs->m_windowResolution.m_defined){
+        m_width = camAttribs->m_windowResolution.m_width;
+        m_height = camAttribs->m_windowResolution.m_height;
 
-    m_width = w;
-    m_height = h;
+    }
+    else{
+        m_width = 0.8 * mode->width;
+        m_height = 0.5 * mode->height;
+    }
 
     if (getVisibleFlag() == false){
         cerr << "INFO! CAMERA \"" << m_name << "\" SET TO INVISIBLE. THEREFORE IT IS ONLY VIEWABLE"
@@ -6550,7 +6654,16 @@ bool afCamera::createWindow()
         glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
     }
 
-    m_window = glfwCreateWindow(w, h, window_name.c_str(), nullptr, s_mainWindow);
+    int screenOriginX, screenOriginY;
+    glfwGetMonitorPos(m_monitor, &screenOriginX, &screenOriginY);
+
+    int windowOriginX = 0.5 * (mode->width - m_width);
+    int windowOriginY = 0.5 * (mode->height - m_height);
+
+    m_window = glfwCreateWindow(m_width, m_height, window_name.c_str(), nullptr, s_mainWindow);
+    // set position of window
+    glfwSetWindowPos(m_window, screenOriginX + windowOriginX, screenOriginY + windowOriginY);
+
     if (s_windowIdx == 0){
         s_mainWindow = m_window;
     }
@@ -6572,14 +6685,6 @@ bool afCamera::createWindow()
 
     // get width and height of window
     glfwGetWindowSize(m_window, &m_width, &m_height);
-
-
-    int xpos, ypos;
-    glfwGetMonitorPos(m_monitor, &xpos, &ypos);
-    x += xpos; y += ypos;
-
-    // set position of window
-    glfwSetWindowPos(m_window, x, y);
 
 //    glfwSetWindowMonitor(m_window, m_monitor, m_win_x, m_win_y, m_width, m_height, mode->refreshRate);
 
@@ -6639,6 +6744,32 @@ bool afCamera::assignWindowCallbacks(afCameraWindowCallBacks *a_callbacks)
         // set drag and drop callback
         glfwSetDropCallback(m_window, a_callbacks->dragDropCallback);
     }
+
+    return true;
+}
+
+bool afCamera::computeProjectionFromIntrinsics(const afCameraIntrinsics *a_attribs, double a_width, double a_height, double a_nearPlane, double a_farPlane){
+    double fx = a_attribs->m_fx;
+    double fy = a_attribs->m_fy;
+    double cx = a_attribs->m_cx;
+    double cy = a_attribs->m_cy;
+    double s = a_attribs->m_s;
+    double W = a_width;
+    double H = a_height;
+    double image_center_x = W/2.;
+    double image_center_y = H/2.;
+    double n = a_nearPlane;
+    double f = a_farPlane;
+
+    getInternalCamera()->m_useCustomProjectionMatrix = true;
+    getInternalCamera()->m_projectionMatrix(0,0) = (2 * fx) / W;
+    getInternalCamera()->m_projectionMatrix(0,1) = (2 * s) / W;
+    getInternalCamera()->m_projectionMatrix(0,2) = (W - 2 * cx) / W;
+    getInternalCamera()->m_projectionMatrix(1,1) = (2 * fy) / H;
+    getInternalCamera()->m_projectionMatrix(1,2) = (-H + 2 * cy) / H;
+    getInternalCamera()->m_projectionMatrix(2,2) = (-f - n) / (f - n);
+    getInternalCamera()->m_projectionMatrix(2,3) = (-2 * f * n) / (f - n);
+    getInternalCamera()->m_projectionMatrix(3,2) = -1.0;
 
     return true;
 }
@@ -6831,6 +6962,11 @@ void afCamera::render(afRenderOptions &options)
         // get width and height of window
         glfwGetFramebufferSize(m_window, &m_width, &m_height);
 
+        afCameraIntrinsics intrinsics = (((afCameraAttributes*)getAttributes())->m_intrinsics);
+        if (intrinsics.m_defined){
+            computeProjectionFromIntrinsics(&intrinsics, m_width, m_height, getInternalCamera()->getNearClippingPlane(), getInternalCamera()->getFarClippingPlane());
+        }
+
         // Update the Labels in a separate sub-routine
         if (options.m_updateLabels && !m_publishDepth && !m_publishImage){
             updateLabels(options);
@@ -6897,6 +7033,11 @@ void afCamera::renderSkyBox(){
 ///
 void afCamera::renderFrameBuffer(){
     if (m_publishImage || m_publishDepth){
+
+        afCameraIntrinsics intrinsics = (((afCameraAttributes*)getAttributes())->m_intrinsics);
+        if (intrinsics.m_defined){
+            computeProjectionFromIntrinsics(&intrinsics, m_frameBuffer->getWidth(), m_frameBuffer->getHeight(), getInternalCamera()->getNearClippingPlane(), getInternalCamera()->getFarClippingPlane());
+        }
 
         activatePreProcessingShaders();
 
@@ -7678,18 +7819,43 @@ void afModel::ignoreCollisionChecking(){
     /// Only ignore collision checking between the bodies
     /// defined in the specific model config file
     /// and not all the bodies in the world
+    vector<afInertialObjectPtr> bodiesVec;
+    bodiesVec.resize(getRigidBodyMap()->size() + getSoftBodyMap()->size());
+
     afBaseObjectMap::iterator rBodyItA = getRigidBodyMap()->begin();
-    vector<btRigidBody*> rBodiesVec;
-    rBodiesVec.resize(getRigidBodyMap()->size());
+    afBaseObjectMap::iterator sBodyItA = getSoftBodyMap()->begin();
     uint i=0;
     for ( ; rBodyItA != getRigidBodyMap()->end() ; ++rBodyItA){
-        rBodiesVec[i] = ((afRigidBodyPtr)rBodyItA->second)->m_bulletRigidBody;
+        bodiesVec[i] = (afRigidBodyPtr)rBodyItA->second;
         i++;
     }
-    if (rBodiesVec.size() >0){
-        for (uint i = 0 ; i < rBodiesVec.size() - 1 ; i++){
-            for (uint j = i+1 ; j < rBodiesVec.size() ; j++){
-                rBodiesVec[i]->setIgnoreCollisionCheck(rBodiesVec[j], true);
+    for ( ; sBodyItA != getSoftBodyMap()->end() ; ++sBodyItA){
+        bodiesVec[i] = (afSoftBodyPtr)sBodyItA->second;
+        i++;
+    }
+    if (bodiesVec.size() >0){
+        for (uint i = 0 ; i < bodiesVec.size() - 1 ; i++){
+            afInertialObjectPtr bodyA = bodiesVec[i];
+            for (uint j = i+1 ; j < bodiesVec.size() ; j++){
+                afInertialObjectPtr bodyB = bodiesVec[j];
+                if (bodyA->m_bulletRigidBody && bodyB->m_bulletRigidBody) {
+                    bodyA->m_bulletRigidBody->setIgnoreCollisionCheck(bodyB->m_bulletRigidBody, true);
+                    cout << "Ignoring collision between rigid bodies: " << bodyA << " and " << bodyB << endl;
+                }
+                // Handle Soft Body
+                else if (bodyA->m_bulletSoftBody && bodyB->m_bulletRigidBody) {
+                    bodyB->m_bulletRigidBody->setIgnoreCollisionCheck(bodyA->m_bulletSoftBody, true);
+                    cout << "Ignoring collision between soft body: " << bodyA << " and rigid body: " << bodyB << endl;
+                }
+                else if (bodyA->m_bulletRigidBody && bodyB->m_bulletSoftBody) {
+                    bodyA->m_bulletRigidBody->setIgnoreCollisionCheck(bodyB->m_bulletSoftBody, true);
+                    cout << "Ignoring collision between rigid body: " << bodyA << " and soft body: " << bodyB << endl;
+                }
+                else if (bodyA->m_bulletSoftBody && bodyB->m_bulletSoftBody) {
+                    // Set ignore collision for both soft bodies
+                    bodyA->m_bulletSoftBody->setIgnoreCollisionCheck(bodyB->m_bulletSoftBody, true);
+                    cout << "Ignoring collision between soft bodies: " << bodyA << " and " << bodyB << endl;
+                }
             }
         }
     }
@@ -8296,7 +8462,7 @@ bool afVolume::createFromAttribs(afVolumeAttributes *a_attribs)
             m_voxelObject = new cVoxelObject();
             // Setting transparency before setting the texture ensures that the rendering does not show empty spaces as black
             // and the depth point cloud is able to see the volume
-//            m_voxelObject->setTransparencyLevel(1.0);
+           m_voxelObject->setTransparencyLevel(1.0);
 
             cTexture3dPtr texture = cTexture3d::create();
             texture->setImage(m_multiImage);
@@ -8645,25 +8811,31 @@ btScalar afContactSensorCallback::addSingleResult(btManifoldPoint &cp, const btC
 {
     if (cp.getDistance() <= m_distanceThreshold){
         afBaseObjectPtr boA, boB;
-        cVector3d P_a_w, P_b_w, N_b_w;
+        cVector3d P_a_w, P_b_w, N_b_w, P_a_l, P_b_l;
         if(colObj0->m_collisionObject->getUserPointer() == m_parentObject) {
             boA = (afBaseObjectPtr)colObj0->m_collisionObject->getUserPointer();
             boB = (afBaseObjectPtr)colObj1->m_collisionObject->getUserPointer();
             P_a_w << cp.m_positionWorldOnA;
             P_b_w << cp.m_positionWorldOnB;
             N_b_w << cp.m_normalWorldOnB;
+
+            P_a_l << cp.m_localPointA;
+            P_b_l << cp.m_localPointB;
         } else {
             assert(colObj1->m_collisionObject->getUserPointer() == m_parentObject && "body does not match either collision object");
-            boA = (afBaseObjectPtr)colObj0->m_collisionObject->getUserPointer();
+            boA = (afBaseObjectPtr)colObj1->m_collisionObject->getUserPointer();
             boB = (afBaseObjectPtr)colObj0->m_collisionObject->getUserPointer();
             P_a_w << cp.m_positionWorldOnB;
             P_b_w << cp.m_positionWorldOnA;
             N_b_w << -cp.m_normalWorldOnB;
+
+            P_a_l << cp.m_localPointB;
+            P_b_l << cp.m_localPointA;
         }
         if (m_contactEventMap.find(boB) == m_contactEventMap.end()){
             m_contactEventMap[boB] = afContactEvent(boA, boB);
         }
-        m_contactEventMap[boB].m_contactData.push_back(afContactData(P_a_w, P_b_w, N_b_w, cp.m_distance1));
+        m_contactEventMap[boB].m_contactData.push_back(afContactData(P_a_w, P_b_w, N_b_w, P_a_l, P_b_l, cp.m_distance1));
     }
     return 0;
 }
@@ -8773,10 +8945,14 @@ void afContactSensor::update(double dt){
 }
 
 
-afContactData::afContactData(cVector3d &P_a_w, cVector3d &P_b_w, cVector3d &N_b_w, double &distance){
+afContactData::afContactData(cVector3d &P_a_w, cVector3d &P_b_w, cVector3d &N_b_w, cVector3d &P_a_l, cVector3d &P_b_l, double &distance){
     m_P_a_w = P_a_w;
     m_P_b_w = P_b_w;
     m_N_b_w = N_b_w;
+
+    m_P_a_l = P_a_l;
+    m_P_b_l = P_b_l;
+
     m_distance = distance;
 }
 
